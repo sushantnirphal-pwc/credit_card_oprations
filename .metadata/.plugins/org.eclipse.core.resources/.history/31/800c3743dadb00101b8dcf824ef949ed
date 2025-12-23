@@ -1,0 +1,5 @@
+package com.creditcard.auth.util;
+
+public class JwtUtil {
+
+}

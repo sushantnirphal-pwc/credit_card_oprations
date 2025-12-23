@@ -1,0 +1,23 @@
+package com.creditcard.transaction.feign;
+
+
+import com.creditcard.transaction.dto.ApiResponse;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+
+@Component
+@Slf4j
+public class CustomerServiceClientFallback implements CustomerServiceClient {
+
+    @Override
+    public ApiResponse<CustomerDTO> getCustomerById(Long id) {
+        log.error("Customer Service is down. Fallback for getCustomerById: {}", id);
+        return ApiResponse.error("Customer Service is temporarily unavailable");
+    }
+
+    @Override
+    public ApiResponse<Boolean> customerExists(Long id) {
+        log.error("Customer Service is down. Fallback for customerExists: {}", id);
+        return ApiResponse.error("Customer Service is temporarily unavailable");
+    }
+}

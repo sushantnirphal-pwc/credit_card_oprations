@@ -1,0 +1,30 @@
+package com.creditcard.customer.config;
+
+import lombok.Data;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.stereotype.Component;
+
+@Data
+@Component
+@ConfigurationProperties(prefix = "app")
+public class AppProperties {
+    
+    private String name;
+    private String version;
+    
+    private Api api = new Api();
+    private Pagination pagination = new Pagination();
+    
+    @Data
+    public static class Api {
+        private String prefix = "/api";
+    }
+    
+    @Data
+    public static class Pagination {
+        private int defaultPageSize = 10;
+        private int maxPageSize = 100;
+        private String defaultSortBy = "id";
+        private String defaultSortDir = "ASC";
+    }
+}

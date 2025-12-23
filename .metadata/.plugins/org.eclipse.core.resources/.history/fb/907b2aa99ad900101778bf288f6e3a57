@@ -1,0 +1,5 @@
+package com.creditcard.creditcard_service.enums;
+
+public enum CardType {
+
+}

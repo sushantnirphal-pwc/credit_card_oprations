@@ -1,0 +1,5 @@
+package com.creditcard.transaction.enums;
+
+public enum TransactionType {
+
+}

@@ -1,0 +1,111 @@
+package com.creditcard.customer.config;
+
+import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.info.Contact;
+import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.info.License;
+import io.swagger.v3.oas.models.servers.Server;
+import io.swagger.v3.oas.models.Components;
+import io.swagger.v3.oas.models.security.SecurityScheme;
+import io.swagger.v3.oas.models.security.SecurityRequirement;
+import io.swagger.v3.oas.models.tags.Tag;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import java.util.List;
+
+/**
+ * Swagger/OpenAPI Configuration for Customer Service
+ * Provides comprehensive API documentation
+ * 
+ * @author PWC Credit Card Portal Team
+ * @version 1.0.0
+ */
+@Configuration
+public class SwaggerConfig {
+
+    @Value("${server.port:8081}")
+    private String serverPort;
+
+    @Bean
+    public OpenAPI customerServiceOpenAPI() {
+        // Server Configurations
+        Server localServer = new Server();
+        localServer.setUrl("http://localhost:" + serverPort);
+        localServer.setDescription("Customer Service - Local Development");
+
+        Server gatewayServer = new Server();
+        gatewayServer.setUrl("http://localhost:8080/api/customers");
+        gatewayServer.setDescription("Customer Service - API Gateway");
+
+        // Contact Information
+        Contact contact = new Contact();
+        contact.setName("PWC Credit Card Portal Team");
+        contact.setEmail("support@pwc-creditcard.com");
+        contact.setUrl("https://github.com/pwc/credit-card-portal");
+
+        // License
+        License license = new License()
+                .name("MIT License")
+                .url("https://opensource.org/licenses/MIT");
+
+        // API Information
+        Info info = new Info()
+                .title("🏢 PWC Customer Service API")
+                .version("1.0.0")
+                .description(
+                    "# Customer Management Service\n\n" +
+                    "Complete REST API for managing customer accounts in the PWC Credit Card Portal.\n\n" +
+                    "## Features:\n" +
+                    "- ✅ Create new customer accounts\n" +
+                    "- ✅ Update customer information\n" +
+                    "- ✅ Search and filter customers\n" +
+                    "- ✅ Manage customer status (Active/Inactive/Suspended)\n" +
+                    "- ✅ View customer profile and history\n" +
+                    "- ✅ Pagination and sorting support\n\n" +
+                    "## Service Details:\n" +
+                    "- **Port:** " + serverPort + "\n" +
+                    "- **Database:** PostgreSQL (customer_db)\n" +
+                    "- **Base Path:** /api/customers"
+                )
+                .contact(contact)
+                .license(license)
+                .termsOfService("https://pwc.com/terms");
+
+        // Security Configuration
+        SecurityScheme jwtScheme = new SecurityScheme()
+                .name("JWT Bearer Token")
+                .type(SecurityScheme.Type.HTTP)
+                .scheme("bearer")
+                .bearerFormat("JWT")
+                .in(SecurityScheme.In.HEADER)
+                .description("Enter JWT token obtained from Auth Service (http://localhost:8084)");
+
+        Components components = new Components()
+                .addSecuritySchemes("JWT Bearer Token", jwtScheme);
+
+        SecurityRequirement securityRequirement = new SecurityRequirement()
+                .addList("JWT Bearer Token");
+
+        // API Tags
+        Tag customerManagement = new Tag()
+                .name("Customer Management")
+                .description("Operations related to customer CRUD operations");
+
+        Tag customerSearch = new Tag()
+                .name("Customer Search")
+                .description("Search and filter customer records");
+
+        Tag customerStatus = new Tag()
+                .name("Customer Status")
+                .description("Manage customer account status");
+
+        return new OpenAPI()
+                .info(info)
+                .servers(List.of(localServer, gatewayServer))
+                .components(components)
+                .addSecurityItem(securityRequirement)
+                .tags(List.of(customerManagement, customerSearch, customerStatus));
+    }
+}

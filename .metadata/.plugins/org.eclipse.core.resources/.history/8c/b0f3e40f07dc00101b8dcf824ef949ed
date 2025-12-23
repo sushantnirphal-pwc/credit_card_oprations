@@ -1,0 +1,51 @@
+package com.creditcard.creditcard_service.config;
+
+
+
+import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.info.Contact;
+import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.info.License;
+import io.swagger.v3.oas.models.servers.Server;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import java.util.List;
+
+@Configuration
+public class SwaggerConfig {
+
+    @Value("${server.port:8082}")
+    private String serverPort;
+
+    @Bean
+    public OpenAPI customOpenAPI() {
+        Server server = new Server();
+        server.setUrl("http://localhost:" + serverPort);
+        server.setDescription("Development Server");
+
+        Contact contact = new Contact();
+        contact.setName("Card Service Team");
+        contact.setEmail("support@creditcard.com");
+        contact.setUrl("https://creditcard.com");
+
+        License license = new License();
+        license.setName("Apache 2.0");
+        license.setUrl("https://www.apache.org/licenses/LICENSE-2.0");
+
+        Info info = new Info()
+                .title("Card Service API")
+                .version("1.0.0")
+                .description("REST API for managing credit cards in Credit Card Portal. " +
+                        "This API provides endpoints for card issuance, activation, blocking, and management.")
+                .contact(contact)
+                .license(license)
+                .termsOfService("https://creditcard.com/terms");
+
+        return new OpenAPI()
+                .openapi("3.0.1")
+                .info(info)
+                .servers(List.of(server));
+    }
+}

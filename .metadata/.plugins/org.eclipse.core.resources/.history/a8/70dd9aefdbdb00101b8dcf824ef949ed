@@ -1,0 +1,5 @@
+package com.creditcard.api_gateway.util;
+
+public class JwtUtil {
+
+}

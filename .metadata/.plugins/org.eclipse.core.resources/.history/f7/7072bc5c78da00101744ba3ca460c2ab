@@ -1,0 +1,36 @@
+package com.creditcard.transaction.feign;
+
+import com.creditcard.transaction.dto.ApiResponse;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+
+import java.time.LocalDateTime;
+
+@Component
+@Slf4j
+public class CustomerServiceClientFallback implements CustomerServiceClient {
+
+    @Override
+    public ApiResponse<CustomerDTO> getCustomerById(Long id) {
+        log.error("Customer Service is down. Fallback triggered for getCustomerById: {}", id);
+        
+        return ApiResponse.<CustomerDTO>builder()
+                .success(false)
+                .message("Customer Service is temporarily unavailable")
+                .data(null)
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+
+    @Override
+    public ApiResponse<Boolean> customerExists(Long id) {
+        log.error("Customer Service is down. Fallback triggered for customerExists: {}", id);
+        
+        return ApiResponse.<Boolean>builder()
+                .success(false)
+                .message("Customer Service is temporarily unavailable")
+                .data(null)
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+}

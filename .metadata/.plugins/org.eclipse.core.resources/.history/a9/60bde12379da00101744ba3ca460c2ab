@@ -1,0 +1,5 @@
+package com.creditcard.transaction.repository;
+
+public interface TransactionRepository {
+
+}

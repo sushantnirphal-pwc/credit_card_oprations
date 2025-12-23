@@ -1,0 +1,30 @@
+package com.creditcard.transaction.feign;
+
+
+
+import com.creditcard.transaction.dto.ApiResponse;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+
+@Component
+@Slf4j
+public class CardServiceClientFallback implements CardServiceClient {
+
+    @Override
+    public ApiResponse<CardDTO> getCardById(Long id) {
+        log.error("Card Service is down. Fallback for getCardById: {}", id);
+        return ApiResponse.error("Card Service is temporarily unavailable");
+    }
+
+    @Override
+    public ApiResponse<Boolean> cardExists(Long id) {
+        log.error("Card Service is down. Fallback for cardExists: {}", id);
+        return ApiResponse.error("Card Service is temporarily unavailable");
+    }
+
+    @Override
+    public ApiResponse<CardDTO> updateCardBalance(Long id, Double amount, Boolean isDebit) {
+        log.error("Card Service is down. Fallback for updateCardBalance: {}", id);
+        return ApiResponse.error("Card Service is temporarily unavailable");
+    }
+}

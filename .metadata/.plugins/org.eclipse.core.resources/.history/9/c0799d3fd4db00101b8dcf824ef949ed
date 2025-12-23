@@ -1,0 +1,5 @@
+package com.creditcard.api_gateway.health;
+
+public class ServicesHealthIndicator {
+
+}

@@ -1,0 +1,5 @@
+package com.creditcard.customer.config;
+
+public class AppProperties {
+
+}

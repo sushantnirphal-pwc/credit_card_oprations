@@ -1,0 +1,5 @@
+package com.creditcard.customer.feign;
+
+public interface CardServiceClient {
+
+}

@@ -1,0 +1,143 @@
+spring.application.name=api-gateway
+
+# src/main/resources/configurations/api-gateway.properties
+# ============================================
+# SERVER CONFIGURATION
+# ============================================
+server.port=8080
+
+
+# ============================================
+# GATEWAY ROUTES CONFIGURATION
+# ============================================
+
+# Customer Service Route
+spring.cloud.gateway.routes[0].id=customer-service
+spring.cloud.gateway.routes[0].uri=http://localhost:8081
+spring.cloud.gateway.routes[0].predicates[0]=Path=/api/customers/**
+spring.cloud.gateway.routes[0].filters[0]=AddRequestHeader=X-Gateway-Source, API-Gateway
+spring.cloud.gateway.routes[0].filters[1].name=CircuitBreaker
+spring.cloud.gateway.routes[0].filters[1].args.name=customerServiceCircuitBreaker
+spring.cloud.gateway.routes[0].filters[1].args.fallbackUri=forward:/fallback/customers
+
+# Card Service Route
+spring.cloud.gateway.routes[1].id=card-service
+spring.cloud.gateway.routes[1].uri=http://localhost:8082
+spring.cloud.gateway.routes[1].predicates[0]=Path=/api/cards/**
+spring.cloud.gateway.routes[1].filters[0]=AddRequestHeader=X-Gateway-Source, API-Gateway
+spring.cloud.gateway.routes[1].filters[1].name=CircuitBreaker
+spring.cloud.gateway.routes[1].filters[1].args.name=cardServiceCircuitBreaker
+spring.cloud.gateway.routes[1].filters[1].args.fallbackUri=forward:/fallback/cards
+
+# Transaction Service Route
+spring.cloud.gateway.routes[2].id=transaction-service
+spring.cloud.gateway.routes[2].uri=http://localhost:8083
+spring.cloud.gateway.routes[2].predicates[0]=Path=/api/transactions/**
+spring.cloud.gateway.routes[2].filters[0]=AddRequestHeader=X-Gateway-Source, API-Gateway
+spring.cloud.gateway.routes[2].filters[1].name=CircuitBreaker
+spring.cloud.gateway.routes[2].filters[1].args.name=transactionServiceCircuitBreaker
+spring.cloud.gateway.routes[2].filters[1].args.fallbackUri=forward:/fallback/transactions
+
+# ============================================
+# CORS CONFIGURATION
+# ============================================
+spring.cloud.gateway.globalcors.cors-configurations.[/**].allowed-origins=*
+spring.cloud.gateway.globalcors.cors-configurations.[/**].allowed-methods[0]=GET
+spring.cloud.gateway.globalcors.cors-configurations.[/**].allowed-methods[1]=POST
+spring.cloud.gateway.globalcors.cors-configurations.[/**].allowed-methods[2]=PUT
+spring.cloud.gateway.globalcors.cors-configurations.[/**].allowed-methods[3]=PATCH
+spring.cloud.gateway.globalcors.cors-configurations.[/**].allowed-methods[4]=DELETE
+spring.cloud.gateway.globalcors.cors-configurations.[/**].allowed-methods[5]=OPTIONS
+spring.cloud.gateway.globalcors.cors-configurations.[/**].allowed-headers=*
+spring.cloud.gateway.globalcors.cors-configurations.[/**].allow-credentials=false
+
+# ============================================
+# REDIS CONFIGURATION (for Rate Limiting)
+# ============================================
+spring.data.redis.host=localhost
+spring.data.redis.port=6379
+spring.data.redis.timeout=2000ms
+
+# ============================================
+# ACTUATOR CONFIGURATION
+# ============================================
+management.endpoints.web.exposure.include=health,info,gateway,metrics,prometheus
+management.endpoint.health.show-details=always
+management.endpoint.gateway.enabled=true
+management.metrics.export.prometheus.enabled=true
+
+# ============================================
+# APPLICATION INFO
+# ============================================
+info.app.name=API Gateway
+info.app.description=API Gateway for Credit Card Portal
+info.app.version=1.0.0
+
+# ============================================
+# CIRCUIT BREAKER - RESILIENCE4J
+# ============================================
+
+# Customer Service Circuit Breaker
+resilience4j.circuitbreaker.instances.customerServiceCircuitBreaker.registerHealthIndicator=true
+resilience4j.circuitbreaker.instances.customerServiceCircuitBreaker.slidingWindowSize=10
+resilience4j.circuitbreaker.instances.customerServiceCircuitBreaker.minimumNumberOfCalls=5
+resilience4j.circuitbreaker.instances.customerServiceCircuitBreaker.permittedNumberOfCallsInHalfOpenState=3
+resilience4j.circuitbreaker.instances.customerServiceCircuitBreaker.waitDurationInOpenState=5s
+resilience4j.circuitbreaker.instances.customerServiceCircuitBreaker.failureRateThreshold=50
+resilience4j.circuitbreaker.instances.customerServiceCircuitBreaker.slowCallRateThreshold=50
+resilience4j.circuitbreaker.instances.customerServiceCircuitBreaker.slowCallDurationThreshold=2s
+
+# Card Service Circuit Breaker
+resilience4j.circuitbreaker.instances.cardServiceCircuitBreaker.registerHealthIndicator=true
+resilience4j.circuitbreaker.instances.cardServiceCircuitBreaker.slidingWindowSize=10
+resilience4j.circuitbreaker.instances.cardServiceCircuitBreaker.minimumNumberOfCalls=5
+resilience4j.circuitbreaker.instances.cardServiceCircuitBreaker.permittedNumberOfCallsInHalfOpenState=3
+resilience4j.circuitbreaker.instances.cardServiceCircuitBreaker.waitDurationInOpenState=5s
+resilience4j.circuitbreaker.instances.cardServiceCircuitBreaker.failureRateThreshold=50
+resilience4j.circuitbreaker.instances.cardServiceCircuitBreaker.slowCallRateThreshold=50
+resilience4j.circuitbreaker.instances.cardServiceCircuitBreaker.slowCallDurationThreshold=2s
+
+# Transaction Service Circuit Breaker
+resilience4j.circuitbreaker.instances.transactionServiceCircuitBreaker.registerHealthIndicator=true
+resilience4j.circuitbreaker.instances.transactionServiceCircuitBreaker.slidingWindowSize=10
+resilience4j.circuitbreaker.instances.transactionServiceCircuitBreaker.minimumNumberOfCalls=5
+resilience4j.circuitbreaker.instances.transactionServiceCircuitBreaker.permittedNumberOfCallsInHalfOpenState=3
+resilience4j.circuitbreaker.instances.transactionServiceCircuitBreaker.waitDurationInOpenState=5s
+resilience4j.circuitbreaker.instances.transactionServiceCircuitBreaker.failureRateThreshold=50
+resilience4j.circuitbreaker.instances.transactionServiceCircuitBreaker.slowCallRateThreshold=50
+resilience4j.circuitbreaker.instances.transactionServiceCircuitBreaker.slowCallDurationThreshold=2s
+
+# ============================================
+# RETRY CONFIGURATION
+# ============================================
+resilience4j.retry.instances.customerService.maxAttempts=3
+resilience4j.retry.instances.customerService.waitDuration=1s
+
+resilience4j.retry.instances.cardService.maxAttempts=3
+resilience4j.retry.instances.cardService.waitDuration=1s
+
+resilience4j.retry.instances.transactionService.maxAttempts=3
+resilience4j.retry.instances.transactionService.waitDuration=1s
+
+# ============================================
+# LOGGING CONFIGURATION
+# ============================================
+logging.level.org.springframework.cloud.gateway=DEBUG
+logging.level.reactor.netty.http.client=DEBUG
+logging.level.com.creditcard.gateway=DEBUG
+logging.pattern.console=%d{yyyy-MM-dd HH:mm:ss} - %msg%n
+
+# Log File Configuration
+logging.file.name=logs/api-gateway.log
+logging.file.max-size=10MB
+logging.file.max-history=30
+
+# ============================================
+# DISCOVERY CLIENT (Disabled for now)
+# ============================================
+spring.cloud.discovery.enabled=false
+eureka.client.enabled=false
+
+spring.cloud.gateway.routes[0].id=customer-service
+spring.cloud.gateway.routes[0].uri=http://localhost:8081
+spring.cloud.gateway.routes[0].predicates[0]=Path=/api/customers/**

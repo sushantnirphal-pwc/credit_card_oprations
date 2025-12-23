@@ -1,0 +1,5 @@
+package com.creditcard.auth.repositoty;
+
+public interface UserRepository {
+
+}

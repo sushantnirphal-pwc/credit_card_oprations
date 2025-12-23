@@ -1,0 +1,11 @@
+package com.creditcard.transaction.enums;
+
+
+public enum TransactionType {
+    PURCHASE,      // Buy something
+    REFUND,        // Return/refund
+    PAYMENT,       // Credit card bill payment
+    CASH_ADVANCE,  // Cash withdrawal
+    FEE,           // Annual fee, late fee, etc.
+    REVERSAL       // Transaction reversal/cancellation
+}

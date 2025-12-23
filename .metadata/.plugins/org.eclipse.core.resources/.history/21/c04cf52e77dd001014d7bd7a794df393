@@ -1,0 +1,53 @@
+# ============================================
+# SERVER CONFIGURATION
+# ============================================
+server.port=8080
+spring.application.name=api-gateway
+
+# ============================================
+# JWT CONFIGURATION - MUST MATCH AUTH SERVICE
+# ============================================
+jwt.secret=MySecretKeyForJWTAuthenticationThatIsLongEnoughForHS256Algorithm2024
+
+# ============================================
+# GATEWAY ROUTES CONFIGURATION
+# ============================================
+# Auth Service Route
+spring.cloud.gateway.routes[0].id=auth-service
+spring.cloud.gateway.routes[0].uri=http://localhost:8084
+spring.cloud.gateway.routes[0].predicates[0]=Path=/api/auth/**
+
+# Card Service Route
+spring.cloud.gateway.routes[1].id=card-service
+spring.cloud.gateway.routes[1].uri=http://localhost:8082
+spring.cloud.gateway.routes[1].predicates[0]=Path=/api/cards/**
+
+# Transaction Service Route
+spring.cloud.gateway.routes[2].id=transaction-service
+spring.cloud.gateway.routes[2].uri=http://localhost:8083
+spring.cloud.gateway.routes[2].predicates[0]=Path=/api/transactions/**
+
+# Customer Service Route (if you have it)
+spring.cloud.gateway.routes[3].id=customer-service
+spring.cloud.gateway.routes[3].uri=http://localhost:8085
+spring.cloud.gateway.routes[3].predicates[0]=Path=/api/customers/**
+
+# ============================================
+# ACTUATOR CONFIGURATION
+# ============================================
+management.endpoints.web.exposure.include=health,info,metrics,gateway
+management.endpoint.health.show-details=always
+
+# ============================================
+# LOGGING CONFIGURATION
+# ============================================
+logging.level.com.creditcard.api_gateway=DEBUG
+logging.level.org.springframework.cloud.gateway=DEBUG
+logging.level.reactor.netty=INFO
+
+# ============================================
+# APPLICATION INFO
+# ============================================
+info.app.name=API Gateway
+info.app.description=API Gateway for Credit Card Portal
+info.app.version=1.0.0

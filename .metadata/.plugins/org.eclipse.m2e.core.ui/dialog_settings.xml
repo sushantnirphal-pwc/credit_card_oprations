@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<section name="Workbench">
+	<section name="MavenProjectImportWizardPage">
+		<list key="rootDirectory">
+			<item value="C:\Users\abehera042\Project_Works\credit-card-portal\backend\auth-service"/>
+			<item value="C:\Users\abehera042\Project_Works\credit-card-portal\backend\config-service"/>
+			<item value="C:\Users\abehera042\Project_Works\credit-card-portal\backend\transaction-service"/>
+			<item value="C:\Users\abehera042\Project_Works\credit-card-portal\backend\discovery-service"/>
+			<item value="C:\Users\abehera042\Project_Works\credit-card-portal\backend\customer-service"/>
+			<item value="C:\Users\abehera042\Project_Works\credit-card-portal\backend\creditcard-service"/>
+			<item value="C:\Users\abehera042\Project_Works\credit-card-portal\backend\api-gateway"/>
+		</list>
+		<list key="projectNameTemplate">
+			<item value="[artifactId]"/>
+			<item value="[artifactId]-TRUNK"/>
+			<item value="[artifactId]-[version]"/>
+			<item value="[groupId].[artifactId]"/>
+			<item value="[groupId].[artifactId]-[version]"/>
+			<item value="[name]"/>
+		</list>
+	</section>
+	<section name="org.eclipse.m2e.core.pom.overview">
+	</section>
+	<section name="org.eclipse.m2e.core.pom.dependencies">
+	</section>
+</section>

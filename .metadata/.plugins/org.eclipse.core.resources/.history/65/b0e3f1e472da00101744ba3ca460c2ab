@@ -1,0 +1,5 @@
+package com.creditcard.transaction.config;
+
+public class FeignConfig {
+
+}

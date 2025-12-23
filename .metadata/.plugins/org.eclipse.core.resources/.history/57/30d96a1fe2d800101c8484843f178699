@@ -1,0 +1,5 @@
+package com.creditcard.customer.dto;
+
+public class CustomerRequestDTO {
+
+}

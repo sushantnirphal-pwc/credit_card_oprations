@@ -1,0 +1,39 @@
+spring.application.name=config-service
+
+# Server Configuration
+server.port=8888
+
+# Spring Application Configuration
+
+# Config Server Configuration
+spring.cloud.config.server.git.uri=https://github.com/spring-cloud-samples/config-repo
+spring.cloud.config.server.git.clone-on-start=true
+spring.cloud.config.server.git.default-label=main
+spring.cloud.config.server.default-application-name=application
+
+# For local file system (alternative to Git - we'll use this for now)
+spring.profiles.active=native
+spring.cloud.config.server.native.search-locations=classpath:/config
+
+# Eureka Client Configuration
+eureka.client.service-url.defaultZone=http://localhost:8761/eureka/
+eureka.client.fetch-registry=true
+eureka.client.register-with-eureka=true
+eureka.instance.prefer-ip-address=true
+
+# Actuator Configuration
+management.endpoints.web.exposure.include=health,info,refresh
+management.endpoint.health.show-details=always
+
+# Security Configuration (basic auth for config server)
+spring.security.user.name=config-user
+spring.security.user.password=config-pass
+spring.security.user.roles=ADMIN
+
+# Logging Configuration
+logging.level.org.springframework.cloud.config=DEBUG
+
+# Default configuration for all services
+
+spring.jpa.show-sql=true
+spring.jpa.hibernate.ddl-auto=update

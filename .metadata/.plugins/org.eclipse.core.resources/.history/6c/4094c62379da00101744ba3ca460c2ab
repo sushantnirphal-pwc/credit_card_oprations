@@ -1,0 +1,5 @@
+package com.creditcard.transaction.service.impl;
+
+public interface TransactionServiceImpl {
+
+}

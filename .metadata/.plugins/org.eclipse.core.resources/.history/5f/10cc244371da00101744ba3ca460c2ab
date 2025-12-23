@@ -1,0 +1,20 @@
+package com.creditcard.transaction.controller;
+
+@Operation(
+	    summary = "Update card balance",
+	    description = "Updates the available credit balance of a card (for transaction processing)"
+	)
+	@PatchMapping("/{id}/update-balance")
+	public ResponseEntity<ApiResponse<CardResponseDTO>> updateCardBalance(
+	        @Parameter(description = "Card ID", required = true)
+	        @PathVariable Long id,
+	        @Parameter(description = "Amount to update", required = true)
+	        @RequestParam Double amount,
+	        @Parameter(description = "Is debit transaction (true=subtract, false=add)", required = true)
+	        @RequestParam Boolean isDebit) {
+	    
+	    log.info("Updating balance for card: {} by amount: {} (isDebit: {})", id, amount, isDebit);
+	    
+	    CardResponseDTO response = cardService.updateCardBalance(id, amount, isDebit);
+	    return ResponseEntity.ok(ApiResponse.success(response, "Card balance updated successfully"));
+	}

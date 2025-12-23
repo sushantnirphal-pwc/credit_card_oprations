@@ -1,0 +1,47 @@
+# ============================================
+# DEVELOPMENT ENVIRONMENT CONFIGURATION
+# ============================================
+
+# Server Configuration
+server.port=8081
+
+# Database Configuration
+spring.datasource.url=jdbc:mysql://localhost:3306/customer_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+spring.datasource.username=root
+spring.datasource.password=password
+
+# JPA Configuration
+spring.jpa.hibernate.ddl-auto=create-drop
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+
+# H2 Console (if using H2 for dev)
+# spring.h2.console.enabled=true
+# spring.h2.console.path=/h2-console
+
+# Logging Configuration
+logging.level.com.creditcard.customer=DEBUG
+logging.level.org.springframework=DEBUG
+logging.level.org.springframework.web=DEBUG
+logging.level.org.hibernate=DEBUG
+
+# Disable Eureka for local development (optional)
+# eureka.client.enabled=false
+
+# Feign Logging
+logging.level.com.creditcard.customer.feign=DEBUG
+feign.client.config.default.loggerLevel=full
+
+# Actuator - show all details in dev
+management.endpoint.health.show-details=always
+management.endpoints.web.exposure.include=*
+
+# Dev Tools
+spring.devtools.restart.enabled=true
+spring.devtools.livereload.enabled=true
+
+# Disable caching for development
+spring.cache.type=none
+
+# Card Service URL for local testing
+card.service.url=http://localhost:8082

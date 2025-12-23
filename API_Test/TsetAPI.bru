@@ -1,0 +1,15 @@
+meta {
+  name: TsetAPI
+  type: http
+  seq: 1
+}
+
+post {
+  url: http://localhost:8083/api/transactions
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {"cardId":1,"type":"PURCHASE","amount":150.50,"description":"Test"}
+}

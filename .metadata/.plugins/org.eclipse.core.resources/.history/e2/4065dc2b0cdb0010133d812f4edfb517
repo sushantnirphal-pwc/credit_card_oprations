@@ -1,0 +1,11 @@
+package com.creditcard.transaction.enums;
+
+
+public enum TransactionStatus {
+    PENDING,       // Transaction initiated
+    PROCESSING,    // Being processed
+    SUCCESS,       // Completed successfully
+    FAILED,        // Failed to process
+    REVERSED,      // Transaction reversed/cancelled
+    DECLINED       // Declined due to insufficient balance or other reasons
+}

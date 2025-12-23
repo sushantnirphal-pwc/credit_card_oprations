@@ -1,0 +1,413 @@
+package com.creditcard.transaction.service.impl;
+
+import com.creditcard.transaction.dto.ApiResponse;
+import com.creditcard.transaction.dto.TransactionRequestDTO;
+import com.creditcard.transaction.dto.TransactionResponseDTO;
+import com.creditcard.transaction.entity.Transaction;
+import com.creditcard.transaction.enums.TransactionStatus;
+import com.creditcard.transaction.enums.TransactionType;
+import com.creditcard.transaction.exception.*;
+import com.creditcard.transaction.feign.CardDTO;
+import com.creditcard.transaction.feign.CardServiceClient;
+import com.creditcard.transaction.feign.CustomerServiceClient;
+import com.creditcard.transaction.mapper.TransactionMapper;
+import com.creditcard.transaction.repository.TransactionRepository;
+import com.creditcard.transaction.service.TransactionService;
+import com.creditcard.transaction.util.TransactionUtils;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+@Transactional
+public class TransactionServiceImpl implements TransactionService {
+
+    private final TransactionRepository transactionRepository;
+    private final TransactionMapper transactionMapper;
+    private final CardServiceClient cardServiceClient;
+    private final CustomerServiceClient customerServiceClient;
+
+    @Override
+    public TransactionResponseDTO createTransaction(TransactionRequestDTO requestDTO) {
+        log.info("Creating transaction for card ID: {}", requestDTO.getCardId());
+
+        // Validate amount
+        if (!TransactionUtils.isValidAmount(requestDTO.getAmount())) {
+            throw new InvalidTransactionException("Invalid transaction amount");
+        }
+
+        // Get card details
+        ApiResponse<CardDTO> cardResponse = cardServiceClient.getCardById(requestDTO.getCardId());
+        if (!cardResponse.isSuccess() || cardResponse.getData() == null) {
+            throw new CardNotFoundException("Card not found with ID: " + requestDTO.getCardId());
+        }
+
+        CardDTO card = cardResponse.getData();
+
+        // Verify card is active
+        if (!"ACTIVE".equals(card.getStatus())) {
+            throw new InvalidTransactionException("Card is not active. Status: " + card.getStatus());
+        }
+
+        // Create transaction entity
+        Transaction transaction = transactionMapper.toEntity(requestDTO);
+        transaction.setCustomerId(card.getCustomerId());
+        transaction.setTransactionReference(generateUniqueReference());
+        transaction.setTransactionDate(LocalDateTime.now());
+        transaction.setPreviousBalance(card.getAvailableCredit());
+        transaction.setCurrency("USD");
+
+        // Process based on transaction type
+        switch (requestDTO.getType()) {
+            case PURCHASE:
+            case CASH_ADVANCE:
+            case FEE:
+                processPurchaseTransaction(transaction, card, requestDTO.getAmount());
+                break;
+
+            case REFUND:
+            case PAYMENT:
+                processRefundOrPayment(transaction, card, requestDTO.getAmount());
+                break;
+
+            case REVERSAL:
+                throw new InvalidTransactionException("Use reverseTransaction method for reversals");
+
+            default:
+                throw new InvalidTransactionException("Unsupported transaction type: " + requestDTO.getType());
+        }
+
+        Transaction savedTransaction = transactionRepository.save(transaction);
+        log.info("Transaction created successfully with ID: {} and reference: {}", 
+                 savedTransaction.getId(), savedTransaction.getTransactionReference());
+
+        return transactionMapper.toDTO(savedTransaction);
+    }
+
+    private void processPurchaseTransaction(Transaction transaction, CardDTO card, Double amount) {
+        // Check available credit
+        if (card.getAvailableCredit() < amount) {
+            transaction.setStatus(TransactionStatus.DECLINED);
+            transaction.setFailureReason("Insufficient credit balance. Available: " + 
+                                        card.getAvailableCredit() + ", Required: " + amount);
+            log.error("Transaction declined: Insufficient balance for card ID: {}", card.getId());
+            throw new InsufficientBalanceException(transaction.getFailureReason());
+        }
+
+        // Check daily limit
+        Double dailySpending = getDailySpending(card.getId());
+        if (dailySpending != null && (dailySpending + amount) > card.getDailyLimit()) {
+            transaction.setStatus(TransactionStatus.DECLINED);
+            transaction.setFailureReason("Daily limit exceeded. Daily limit: " + 
+                                        card.getDailyLimit() + ", Current spending: " + dailySpending);
+            log.error("Transaction declined: Daily limit exceeded for card ID: {}", card.getId());
+            throw new InvalidTransactionException(transaction.getFailureReason());
+        }
+
+        // Update card balance - call Card Service to deduct amount
+        try {
+            log.info("Calling Card Service to update balance for card: {}, amount: {}", card.getId(), amount);
+            
+            ApiResponse<CardDTO> updateResponse = cardServiceClient.updateCardBalance(
+                card.getId(), amount, true  // true = debit (subtract)
+            );
+
+            log.info("Card Service response: {}", updateResponse);
+
+            if (!updateResponse.isSuccess()) {
+                String errorMsg = "Failed to update card balance: " + updateResponse.getMessage();
+                transaction.setStatus(TransactionStatus.FAILED);
+                transaction.setFailureReason(errorMsg);
+                log.error(errorMsg);
+                throw new InvalidTransactionException(errorMsg);
+            }
+
+            CardDTO updatedCard = updateResponse.getData();
+            if (updatedCard == null) {
+                String errorMsg = "Card Service returned null data";
+                transaction.setStatus(TransactionStatus.FAILED);
+                transaction.setFailureReason(errorMsg);
+                log.error(errorMsg);
+                throw new InvalidTransactionException(errorMsg);
+            }
+
+            transaction.setNewBalance(updatedCard.getAvailableCredit());
+            transaction.setStatus(TransactionStatus.SUCCESS);
+            transaction.setAuthorizationCode(TransactionUtils.generateAuthorizationCode());
+            
+            log.info("Purchase transaction successful. New balance: {}", updatedCard.getAvailableCredit());
+
+        } catch (InsufficientBalanceException | InvalidTransactionException e) {
+            // Re-throw these exceptions
+            throw e;
+        } catch (feign.FeignException e) {
+            String errorMsg = "Card Service communication error: " + e.getMessage();
+            transaction.setStatus(TransactionStatus.FAILED);
+            transaction.setFailureReason(errorMsg);
+            log.error("Feign exception calling Card Service", e);
+            throw new InvalidTransactionException(errorMsg);
+        } catch (Exception e) {
+            String errorMsg = "Unexpected error: " + e.getMessage();
+            transaction.setStatus(TransactionStatus.FAILED);
+            transaction.setFailureReason(errorMsg);
+            log.error("Unexpected error updating card balance", e);
+            throw new InvalidTransactionException(errorMsg);
+        }
+    }
+
+    private void processRefundOrPayment(Transaction transaction, CardDTO card, Double amount) {
+        // Refunds and payments increase available credit
+        try {
+            ApiResponse<CardDTO> updateResponse = cardServiceClient.updateCardBalance(
+                card.getId(), amount, false  // false = credit (add)
+            );
+
+            if (!updateResponse.isSuccess()) {
+                transaction.setStatus(TransactionStatus.FAILED);
+                transaction.setFailureReason("Failed to update card balance");
+                throw new InvalidTransactionException("Failed to process transaction");
+            }
+
+            CardDTO updatedCard = updateResponse.getData();
+            transaction.setNewBalance(updatedCard.getAvailableCredit());
+            transaction.setStatus(TransactionStatus.SUCCESS);
+            transaction.setAuthorizationCode(TransactionUtils.generateAuthorizationCode());
+            
+            log.info("Refund/Payment transaction successful. New balance: {}", updatedCard.getAvailableCredit());
+
+        } catch (Exception e) {
+            transaction.setStatus(TransactionStatus.FAILED);
+            transaction.setFailureReason("Error updating card balance: " + e.getMessage());
+            log.error("Failed to update card balance: {}", e.getMessage());
+            throw new InvalidTransactionException("Transaction processing failed");
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TransactionResponseDTO getTransactionById(Long id) {
+        log.info("Fetching transaction with ID: {}", id);
+        
+        Transaction transaction = transactionRepository.findById(id)
+                .orElseThrow(() -> new TransactionNotFoundException("Transaction not found with ID: " + id));
+
+        return transactionMapper.toDTO(transaction);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TransactionResponseDTO getTransactionByReference(String reference) {
+        log.info("Fetching transaction with reference: {}", reference);
+        
+        Transaction transaction = transactionRepository.findByTransactionReference(reference)
+                .orElseThrow(() -> new TransactionNotFoundException(
+                    "Transaction not found with reference: " + reference));
+
+        return transactionMapper.toDTO(transaction);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<TransactionResponseDTO> getAllTransactions(Pageable pageable) {
+        log.info("Fetching all transactions with pagination");
+        
+        return transactionRepository.findAll(pageable)
+                .map(transactionMapper::toDTO);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TransactionResponseDTO> getTransactionsByCardId(Long cardId) {
+        log.info("Fetching all transactions for card ID: {}", cardId);
+        
+        return transactionRepository.findByCardId(cardId).stream()
+                .map(transactionMapper::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<TransactionResponseDTO> getTransactionsByCardId(Long cardId, Pageable pageable) {
+        log.info("Fetching transactions for card ID: {} with pagination", cardId);
+        
+        return transactionRepository.findByCardId(cardId, pageable)
+                .map(transactionMapper::toDTO);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TransactionResponseDTO> getTransactionsByCustomerId(Long customerId) {
+        log.info("Fetching all transactions for customer ID: {}", customerId);
+        
+        return transactionRepository.findByCustomerId(customerId).stream()
+                .map(transactionMapper::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<TransactionResponseDTO> getTransactionsByCustomerId(Long customerId, Pageable pageable) {
+        log.info("Fetching transactions for customer ID: {} with pagination", customerId);
+        
+        return transactionRepository.findByCustomerId(customerId, pageable)
+                .map(transactionMapper::toDTO);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TransactionResponseDTO> getTransactionsByStatus(TransactionStatus status) {
+        log.info("Fetching transactions with status: {}", status);
+        
+        return transactionRepository.findByStatus(status).stream()
+                .map(transactionMapper::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TransactionResponseDTO> getTransactionsByType(TransactionType type) {
+        log.info("Fetching transactions of type: {}", type);
+        
+        return transactionRepository.findByType(type).stream()
+                .map(transactionMapper::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TransactionResponseDTO> getTransactionsByDateRange(
+            LocalDateTime startDate, LocalDateTime endDate) {
+        log.info("Fetching transactions between {} and {}", startDate, endDate);
+        
+        return transactionRepository.findByTransactionDateBetween(startDate, endDate).stream()
+                .map(transactionMapper::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TransactionResponseDTO> getTransactionsByCardAndDateRange(
+            Long cardId, LocalDateTime startDate, LocalDateTime endDate) {
+        log.info("Fetching transactions for card {} between {} and {}", cardId, startDate, endDate);
+        
+        return transactionRepository.findByCardIdAndDateRange(cardId, startDate, endDate).stream()
+                .map(transactionMapper::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public TransactionResponseDTO reverseTransaction(Long transactionId, String reason) {
+        log.info("Reversing transaction ID: {}", transactionId);
+
+        Transaction originalTransaction = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new TransactionNotFoundException(
+                    "Transaction not found with ID: " + transactionId));
+
+        if (!originalTransaction.canBeReversed()) {
+            throw new InvalidTransactionException(
+                "Transaction cannot be reversed. Status: " + originalTransaction.getStatus() +
+                ", Already reversed: " + originalTransaction.getIsReversed());
+        }
+
+        // Create reversal transaction
+        Transaction reversalTransaction = new Transaction();
+        reversalTransaction.setCardId(originalTransaction.getCardId());
+        reversalTransaction.setCustomerId(originalTransaction.getCustomerId());
+        reversalTransaction.setType(TransactionType.REVERSAL);
+        reversalTransaction.setAmount(originalTransaction.getAmount());
+        reversalTransaction.setDescription("Reversal of transaction: " + 
+                                          originalTransaction.getTransactionReference());
+        reversalTransaction.setTransactionReference(generateUniqueReference());
+        reversalTransaction.setTransactionDate(LocalDateTime.now());
+        reversalTransaction.setStatus(TransactionStatus.SUCCESS);
+
+        // Update card balance - reverse the deduction
+        try {
+            boolean isCredit = (originalTransaction.getType() == TransactionType.PURCHASE ||
+                              originalTransaction.getType() == TransactionType.CASH_ADVANCE ||
+                              originalTransaction.getType() == TransactionType.FEE);
+
+            ApiResponse<CardDTO> updateResponse = cardServiceClient.updateCardBalance(
+                originalTransaction.getCardId(), 
+                originalTransaction.getAmount(), 
+                !isCredit  // Reverse the operation
+            );
+
+            if (updateResponse.isSuccess()) {
+                CardDTO updatedCard = updateResponse.getData();
+                reversalTransaction.setPreviousBalance(originalTransaction.getNewBalance());
+                reversalTransaction.setNewBalance(updatedCard.getAvailableCredit());
+                reversalTransaction.setAuthorizationCode(TransactionUtils.generateAuthorizationCode());
+
+                // Mark original transaction as reversed
+                originalTransaction.setIsReversed(true);
+                originalTransaction.setReversalReference(reversalTransaction.getTransactionReference());
+                transactionRepository.save(originalTransaction);
+
+                Transaction savedReversal = transactionRepository.save(reversalTransaction);
+                log.info("Transaction reversed successfully. Reversal reference: {}", 
+                        savedReversal.getTransactionReference());
+
+                return transactionMapper.toDTO(savedReversal);
+            } else {
+                throw new InvalidTransactionException("Failed to reverse card balance");
+            }
+
+        } catch (Exception e) {
+            log.error("Failed to reverse transaction: {}", e.getMessage());
+            throw new InvalidTransactionException("Reversal failed: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public TransactionResponseDTO updateTransactionStatus(Long transactionId, TransactionStatus status) {
+        log.info("Updating transaction {} status to {}", transactionId, status);
+
+        Transaction transaction = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new TransactionNotFoundException(
+                    "Transaction not found with ID: " + transactionId));
+
+        transaction.setStatus(status);
+        Transaction updated = transactionRepository.save(transaction);
+
+        log.info("Transaction status updated successfully");
+        return transactionMapper.toDTO(updated);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Double getDailySpending(Long cardId) {
+        Double spending = transactionRepository.getDailySpendingByCardId(cardId, TransactionType.PURCHASE);
+        return spending != null ? spending : 0.0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Double getTotalSpending(Long cardId) {
+        Double spending = transactionRepository.getTotalSpendingByCardId(cardId);
+        return spending != null ? spending : 0.0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long countTransactionsByCardAndStatus(Long cardId, TransactionStatus status) {
+        return transactionRepository.countByCardIdAndStatus(cardId, status);
+    }
+
+    private String generateUniqueReference() {
+        String reference;
+        do {
+            reference = TransactionUtils.generateTransactionReference();
+        } while (transactionRepository.existsByTransactionReference(reference));
+        return reference;
+    }
+}

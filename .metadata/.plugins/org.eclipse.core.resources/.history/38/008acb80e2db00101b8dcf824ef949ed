@@ -1,0 +1,17 @@
+package com.creditcard.customer.config;
+
+
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import com.creditcard.customer.mapper.CustomerMapper;
+
+@Configuration
+public class MapperConfig {
+
+    @Bean
+    public CustomerMapper customerMapper() {
+        return new CustomerMapper();
+    }
+}

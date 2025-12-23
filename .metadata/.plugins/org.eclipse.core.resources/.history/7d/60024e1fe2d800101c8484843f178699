@@ -1,0 +1,5 @@
+package com.creditcard.customer.feign.dto;
+
+public class CardResponseDTO {
+
+}

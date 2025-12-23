@@ -1,0 +1,5 @@
+package com.creditcard.customer.repository;
+
+public interface CustomerRepository {
+
+}

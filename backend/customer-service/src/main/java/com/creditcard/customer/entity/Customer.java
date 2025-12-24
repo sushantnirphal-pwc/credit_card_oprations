@@ -177,8 +177,7 @@ public class Customer {
     public Customer() {
     }
 
-    public Customer() {
-    }
+    
 
     public Customer(Long id, String firstName, String lastName, String email, String phone, String address, String city, String state, String zipCode, LocalDateTime dateOfBirth, CustomerStatus status, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;

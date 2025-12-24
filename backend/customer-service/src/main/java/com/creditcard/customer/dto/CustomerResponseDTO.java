@@ -111,8 +111,7 @@ public class CustomerResponseDTO {
     public CustomerResponseDTO() {
     }
 
-    public CustomerResponseDTO() {
-    }
+    
 
     public CustomerResponseDTO(Long id, String firstName, String lastName, String fullName, String email, String phone, String address, String city, String state, String zipCode, LocalDateTime dateOfBirth, CustomerStatus status, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;

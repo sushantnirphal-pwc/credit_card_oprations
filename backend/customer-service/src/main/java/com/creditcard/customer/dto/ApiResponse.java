@@ -59,9 +59,7 @@ public class ApiResponse<T> {
     public ApiResponse() {
     }
 
-    public ApiResponse() {
-    }
-
+   
     public ApiResponse(boolean success, String message, T data, LocalDateTime timestamp) {
         this.success = success;
         this.message = message;

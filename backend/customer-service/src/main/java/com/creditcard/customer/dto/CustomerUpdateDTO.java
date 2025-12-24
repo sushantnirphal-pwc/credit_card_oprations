@@ -110,8 +110,7 @@ public class CustomerUpdateDTO {
     public CustomerUpdateDTO() {
     }
 
-    public CustomerUpdateDTO() {
-    }
+    
 
     public CustomerUpdateDTO(String firstName, String lastName, String email, String phone, String address, String city, String state, String zipCode, LocalDateTime dateOfBirth) {
         this.firstName = firstName;

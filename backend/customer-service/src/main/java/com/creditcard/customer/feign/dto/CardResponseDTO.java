@@ -14,8 +14,7 @@ public class CardResponseDTO {
     public CardResponseDTO() {
     }
 
-    public CardResponseDTO() {
-    }
+    
 
     public CardResponseDTO(Long id, String cardNumber, Long customerId, BigDecimal creditLimit, BigDecimal availableCredit, String cardType, String status, LocalDate expiryDate) {
         this.id = id;
